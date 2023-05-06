@@ -1,3 +1,4 @@
+from django.db.models import QuerySet
 from rest_framework import viewsets, mixins, status
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -23,6 +24,9 @@ class BorrowingViewSet(
         if self.action == "create":
             return BorrowingCreateSerializer
         return BorrowingListSerializer
+
+    def get_queryset(self) -> QuerySet:
+        return self.queryset.get(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
