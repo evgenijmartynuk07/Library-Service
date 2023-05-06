@@ -59,7 +59,7 @@ class BorrowingViewSet(
             OpenApiParameter(
                 "user_id",
                 type=OpenApiTypes.INT,
-                description="Filter by user id",
+                description="Filter by user id for admin user only",
             ),
         ]
     )
