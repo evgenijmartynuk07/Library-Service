@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "books_service",
     "borrowing_service",
-    "customers_service",
+    "user_service",
 ]
 
 MIDDLEWARE = [
@@ -86,7 +86,7 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = "customers_service.User"
+AUTH_USER_MODEL = "user_service.User"
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
