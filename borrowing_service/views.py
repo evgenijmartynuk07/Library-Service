@@ -1,4 +1,6 @@
 from django.db.models import QuerySet
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, mixins, status
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -26,7 +28,9 @@ class BorrowingViewSet(
         return BorrowingListSerializer
 
     def get_queryset(self) -> QuerySet:
-        return self.queryset.get(user=self.request.user)
+        if self.request.user.is_staff:
+            return self.queryset
+        return self.queryset.filter(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -44,3 +48,39 @@ class BorrowingViewSet(
             return Response(
                 serializer.data, status=status.HTTP_201_CREATED, headers=headers
             )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "is_active",
+                type=OpenApiTypes.BOOL,
+                description="Filter by is active now( True or False)",
+            ),
+            OpenApiParameter(
+                "user_id",
+                type=OpenApiTypes.INT,
+                description="Filter by user id",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        is_active = self.request.query_params.get("is_active")
+        user_id = self.request.query_params.get("user_id")
+        if is_active:
+            if is_active.lower() == "true":
+                queryset = queryset.filter(actual_return_date=None)
+            else:
+                queryset = queryset.exclude(actual_return_date=None)
+        if request.user.is_staff and user_id:
+            queryset = queryset.filter(user=user_id)
+
+        queryset = self.filter_queryset(queryset)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
