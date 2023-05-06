@@ -37,6 +37,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "books_service",
+    "borrowing_service",
+    "customers_service",
 ]
 
 MIDDLEWARE = [
@@ -81,7 +84,7 @@ DATABASES = {
     }
 }
 
-
+AUTH_USER_MODEL = "customers_service.User"
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 

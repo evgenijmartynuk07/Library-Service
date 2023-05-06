@@ -4,7 +4,7 @@ from books_service.models import Book
 from books_service.serializers import BookListCreateSerializer, BookDetailSerializer
 
 
-class PostViewSet(viewsets.ModelViewSet):
+class BookViewSet(viewsets.ModelViewSet):
     serializer_class = BookListCreateSerializer
     queryset = Book.objects.all()
 

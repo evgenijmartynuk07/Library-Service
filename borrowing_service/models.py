@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from customers_service.models import User
 from django.db import models
 
 from books_service.models import Book
