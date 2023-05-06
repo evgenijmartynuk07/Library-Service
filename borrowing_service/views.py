@@ -1,14 +1,18 @@
+import datetime
+
 from django.db.models import QuerySet
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, mixins, status
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 
 from books_service.models import Book
 from borrowing_service.models import Borrowing
-from borrowing_service.serializers import BorrowingListSerializer, BorrowingDetailSerializer, BorrowingCreateSerializer
+from borrowing_service.serializers import BorrowingListSerializer, BorrowingDetailSerializer, BorrowingCreateSerializer, \
+    BorrowingReturnSerializer
 
 
 class BorrowingViewSet(
@@ -25,6 +29,8 @@ class BorrowingViewSet(
             return BorrowingDetailSerializer
         if self.action == "create":
             return BorrowingCreateSerializer
+        if self.action == "return_book":
+            return BorrowingReturnSerializer
         return BorrowingListSerializer
 
     def get_queryset(self) -> QuerySet:
@@ -48,6 +54,24 @@ class BorrowingViewSet(
             return Response(
                 serializer.data, status=status.HTTP_201_CREATED, headers=headers
             )
+
+    @action(
+        methods=["POST"],
+        detail=True,
+        url_path="return",
+    )
+    def return_book(self, request, pk):
+        """Create a new comment for a specific post."""
+        borrowing = self.get_object()
+        book = Book.objects.get(borrowings=pk)
+        with transaction.atomic():
+            if borrowing.actual_return_date is None:
+                book.inventory += 1
+                book.save()
+                borrowing.actual_return_date = datetime.date.today()
+                borrowing.save()
+                return Response(status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_403_FORBIDDEN)
 
     @extend_schema(
         parameters=[

@@ -60,3 +60,11 @@ class BorrowingCreateSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         validated_data["user"] = user
         return super().create(validated_data)
+
+
+class BorrowingReturnSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Borrowing
+        fields = ("id",)
+        read_only_fields = ("id",)
