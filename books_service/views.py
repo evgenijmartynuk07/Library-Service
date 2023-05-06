@@ -11,10 +11,10 @@ class BookViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ("PUT", "PATCH", "DELETE"):
-            return [BookDetailSerializer]
-        return self.serializer_class
+            self.serializer_class = (BookDetailSerializer,)
+        return super(BookViewSet, self).get_serializer_class()
 
     def get_permissions(self):
-        if self.action in ("GET",):
-            return [AllowAny]
-        return self.permission_classes
+        if self.request.method == "GET":
+            self.permission_classes = (AllowAny,)
+        return super(BookViewSet, self).get_permissions()
