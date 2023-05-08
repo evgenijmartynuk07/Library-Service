@@ -39,7 +39,8 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
-    path("api/books/", include("books_service.urls", namespace="books_service"))
+    path("api/books/", include("books_service.urls", namespace="books_service")),
+    path("api/borrowings/", include("borrowing_service.urls", namespace="borrowing_service"))
     # path("", include(router.urls)),
     # path("__debug__/", include("debug_toolbar.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

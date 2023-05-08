@@ -11,8 +11,8 @@ class BookViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ("PUT", "PATCH", "DELETE"):
-            self.serializer_class = (BookDetailSerializer,)
-        return super(BookViewSet, self).get_serializer_class()
+            return BookDetailSerializer
+        return BookListCreateSerializer
 
     def get_permissions(self):
         if self.request.method == "GET":
