@@ -1,4 +1,8 @@
+import asyncio
 import datetime
+import telegram
+import os
+from dotenv import load_dotenv
 
 from django.db.models import QuerySet
 from drf_spectacular.types import OpenApiTypes
@@ -13,6 +17,12 @@ from books_service.models import Book
 from borrowing_service.models import Borrowing
 from borrowing_service.serializers import BorrowingListSerializer, BorrowingDetailSerializer, BorrowingCreateSerializer, \
     BorrowingReturnSerializer
+
+
+load_dotenv()
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+bot = telegram.Bot(token=BOT_TOKEN)
 
 
 class BorrowingViewSet(
@@ -40,7 +50,7 @@ class BorrowingViewSet(
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        data['user'] = request.user.id
+        data["user"] = request.user.id
         book = Book.objects.get(id=request.data.get("book"))
         if book.inventory <= 0:
             raise "No book available"
@@ -51,6 +61,11 @@ class BorrowingViewSet(
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
             headers = self.get_success_headers(serializer.data)
+
+            async def send_message(text):
+                await bot.send_message(chat_id=CHAT_ID, text=text)
+            asyncio.run(send_message(serializer.data))
+
             return Response(
                 serializer.data, status=status.HTTP_201_CREATED, headers=headers
             )
@@ -107,4 +122,6 @@ class BorrowingViewSet(
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+
 
