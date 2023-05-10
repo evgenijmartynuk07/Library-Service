@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from borrowing_service.models import Borrowing
+from borrowing_service.models import Borrowing, Payment
 
 
 class BorrowingListSerializer(serializers.ModelSerializer):
@@ -68,3 +68,10 @@ class BorrowingReturnSerializer(serializers.ModelSerializer):
         model = Borrowing
         fields = ("id",)
         read_only_fields = ("id",)
+
+
+class PaymentListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Payment
+        fields = "__all__"
