@@ -8,7 +8,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from dotenv import load_dotenv
 import stripe
 from django.views.decorators.csrf import csrf_exempt
-from flask import Flask, redirect
+from flask import Flask, redirect, render_template_string, current_app
 from django.db.models import QuerySet
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -55,26 +55,30 @@ class BorrowingViewSet(
             return self.queryset
         return self.queryset.filter(user=self.request.user)
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
+
         data = request.data.copy()
         data["user"] = request.user.id
         book = Book.objects.get(id=request.data.get("book"))
         if book.inventory <= 0:
             raise "No book available"
-        with transaction.atomic():
-            book.inventory -= 1
-            book.save()
-            serializer = self.get_serializer(data=data)
-            serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
-            headers = self.get_success_headers(serializer.data)
+        borrowing = Borrowing.objects.filter(book=book, user=request.user)
+        if borrowing:
+            raise "You borrowed this book"
+        book.inventory -= 1
+        book.save()
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
 
-            async def send_message(text):
-                await bot.send_message(chat_id=CHAT_ID, text=text)
-            asyncio.run(send_message(serializer.data))
+        async def send_message(text):
+            await bot.send_message(chat_id=CHAT_ID, text=text)
+        asyncio.run(send_message(serializer.data))
 
-            return Response(
-                serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        return HttpResponseRedirect(
+            f"http://localhost:8000/api/payments/create-checkout-session/?borrowing_id={serializer.data['id']}"
             )
 
     @action(
@@ -83,7 +87,6 @@ class BorrowingViewSet(
         url_path="return",
     )
     def return_book(self, request, pk):
-        """Create a new comment for a specific post."""
         borrowing = self.get_object()
         book = Book.objects.get(borrowings=pk)
         with transaction.atomic():
@@ -151,8 +154,12 @@ class PaymentViewSet(
         return queryset.filter(borrowing__user=self.request.user)
 
 
-@app.route("/create-checkout-session/?borrowing_id=<int:pk>", methods=["GET"])
+@transaction.atomic
+@app.route("/create-checkout-session/?borrowing_id=<int:pk>", methods=["POST"])
 def create_checkout_session(request):
+    if not request.user:
+        raise "You need login"
+
     borrowing_id = request.GET['borrowing_id']
     borrowing = Borrowing.objects.get(id=borrowing_id)
     payment = Payment.objects.create(
@@ -160,6 +167,8 @@ def create_checkout_session(request):
         money_to_pay=borrowing.total_fine_amount,
         type="PAYMENT",
     )
+    if Payment.objects.filter(borrowing_id=borrowing_id).exists():
+        payment = Payment.objects.get(borrowing_id=borrowing_id)
     session = stripe.checkout.Session.create(
         payment_method_types=['card'],
         line_items=[{
@@ -168,18 +177,18 @@ def create_checkout_session(request):
                 'product_data': {
                     'name': borrowing.book.title,
                 },
-                'unit_amount': int(payment.money_to_pay * 100),  # stripe requires amount in cents
+                'unit_amount': int(payment.money_to_pay * 100),
             },
             'quantity': 1,
         }],
         mode='payment',
-        success_url='http://127.0.0.1:8000/api/payments/success/?session_id={CHECKOUT_SESSION_ID}',
-        cancel_url='http://127.0.0.1:8000/cancel',
+        success_url=f'http://localhost:8000/api/payments/success/?session_id=' + '{CHECKOUT_SESSION_ID}',
+        cancel_url=f'http://localhost:8000/cancel',
         metadata={
-            'payment_id': payment.id  # save the payment id in metadata for later retrieval
+            'payment_id': payment.id
         }
     )
-    # update payment model with session_id and session_url
+
     payment.session_id = session.id
     payment.session_url = session.url
     payment.save()
@@ -189,7 +198,7 @@ def create_checkout_session(request):
 
 @csrf_exempt
 def payment_success(request):
-    session_id = request.GET['session_id']
+    session_id = request.GET.get('session_id')
 
     with transaction.atomic():
         checkout_session = stripe.checkout.Session.retrieve(session_id)
@@ -204,7 +213,11 @@ def payment_success(request):
         payment.save()
 
         borrowing = payment.borrowing
-        borrowing.actual_return_date = datetime.date.today()
         borrowing.save()
 
-        return HttpResponseRedirect('../../payments/')
+        with app.app_context():
+            html = render_template_string(
+                f'<html><body><h1>Thanks for your pay!</h1></body></html>',
+            )
+            return HttpResponse(html)
+
