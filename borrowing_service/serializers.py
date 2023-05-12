@@ -3,6 +3,24 @@ from rest_framework import serializers
 from borrowing_service.models import Borrowing, Payment
 
 
+class PaymentListSerializer(serializers.ModelSerializer):
+    money_to_pay = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payment
+        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")
+
+    def get_money_to_pay(self, obj):
+        return obj.money_to_pay
+
+
+class PaymentDetailSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Payment
+        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")
+
+
 class BorrowingListSerializer(serializers.ModelSerializer):
     book_title = serializers.CharField(source="book.title", read_only=True)
     book_author = serializers.CharField(source="book.author", read_only=True)
@@ -25,6 +43,7 @@ class BorrowingDetailSerializer(serializers.ModelSerializer):
     book_author = serializers.CharField(source="book.author")
     book_cover = serializers.CharField(source="book.cover")
     book_daily_fee = serializers.CharField(source="book.daily_fee")
+    payments = PaymentListSerializer(many=True)
 
     class Meta:
         model = Borrowing
@@ -37,6 +56,7 @@ class BorrowingDetailSerializer(serializers.ModelSerializer):
             "book_author",
             "book_cover",
             "book_daily_fee",
+            "payments",
             "user"
         )
 
@@ -45,6 +65,7 @@ class BorrowingDetailSerializer(serializers.ModelSerializer):
             "book_author",
             "book_cover",
             "book_daily_fee",
+            "payments",
             "user"
         )
 
@@ -70,16 +91,3 @@ class BorrowingReturnSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
-class PaymentListSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Payment
-        fields = "__all__"
-
-
-class PaymentDetailSerializer(serializers.ModelSerializer):
-    borrowing = BorrowingListSerializer(many=False, read_only=True)
-
-    class Meta:
-        model = Payment
-        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")

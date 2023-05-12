@@ -1,6 +1,7 @@
 from rest_framework import routers
 from django.urls import path
-from borrowing_service.views import BorrowingViewSet, PaymentViewSet, create_checkout_session, payment_success
+from borrowing_service.views import BorrowingViewSet, PaymentViewSet, create_checkout_session, payment_success, \
+    cancel_payment
 
 # router = routers.DefaultRouter()
 # router.register("payments", PaymentViewSet)
@@ -13,7 +14,8 @@ urlpatterns = [
     path('payments/', PaymentViewSet.as_view({'get': 'list'}), name='payments-list'),
     path('payments/<int:pk>/', PaymentViewSet.as_view({'get': 'retrieve'}), name='payments-detail'),
     path('payments/create-checkout-session/', create_checkout_session),
-    path('payments/success/', payment_success, name='payment_success'),
+    path('payments/success/', payment_success, name='payment-success'),
+    path('payments/<int:payment_id>/cancel/', cancel_payment, name='cancel-payment'),
 
 ]
 

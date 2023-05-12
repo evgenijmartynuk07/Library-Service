@@ -4,7 +4,11 @@ import telegram
 import os
 import datetime
 from celery.utils.time import timezone
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.http import require_POST, require_GET
 from dotenv import load_dotenv
 import stripe
 from django.views.decorators.csrf import csrf_exempt
@@ -17,7 +21,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
-
+from django.urls import reverse
 from books_service.models import Book
 from borrowing_service.models import Borrowing, Payment
 from borrowing_service.serializers import BorrowingListSerializer, BorrowingDetailSerializer, BorrowingCreateSerializer, \
@@ -155,12 +159,12 @@ class PaymentViewSet(
 
 
 @transaction.atomic
-@app.route("/create-checkout-session/?borrowing_id=<int:pk>", methods=["POST"])
+@app.route("/create-checkout-session/?borrowing_id=<int:pk>", methods=["GET"])
 def create_checkout_session(request):
     if not request.user:
         raise "You need login"
 
-    borrowing_id = request.GET['borrowing_id']
+    borrowing_id = request.GET.get('borrowing_id')
     borrowing = Borrowing.objects.get(id=borrowing_id)
     payment = Payment.objects.create(
         borrowing=borrowing,
@@ -183,7 +187,7 @@ def create_checkout_session(request):
         }],
         mode='payment',
         success_url=f'http://localhost:8000/api/payments/success/?session_id=' + '{CHECKOUT_SESSION_ID}',
-        cancel_url=f'http://localhost:8000/cancel',
+        cancel_url=request.build_absolute_uri(reverse('borrowing_service:cancel-payment', args=[payment.id])),
         metadata={
             'payment_id': payment.id
         }
@@ -206,7 +210,7 @@ def payment_success(request):
         payment_id = checkout_session.metadata['payment_id']
         payment = Payment.objects.get(id=payment_id)
 
-        payment.session_id = checkout_session.payment_intent
+        payment.session_id = checkout_session.id
         payment.money_to_pay = checkout_session.amount_total / 100
         payment.status = "PAID"
         payment.type = "FINE"
@@ -221,3 +225,21 @@ def payment_success(request):
             )
             return HttpResponse(html)
 
+
+@csrf_exempt
+@require_GET
+def cancel_payment(request, payment_id):
+    payment = get_object_or_404(Payment, id=payment_id)
+
+    if payment.status == "PAID":
+        return Response(status=status.HTTP_403_FORBIDDEN)
+
+    payment.status = Payment.STATUS_CHOICES[0][0] # Assuming PENDING is the first choice in STATUS_CHOICES
+    payment.type = Payment.TYPE_CHOICES[0][0]
+    payment.save()
+
+    with app.app_context():
+        html = render_template_string(
+            f'<html><body><h1>payment can be paid a bit later (but the session is available for only 24h)!</h1></body></html>',
+        )
+    return HttpResponse(html)
