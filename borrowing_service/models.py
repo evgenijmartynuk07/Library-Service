@@ -1,3 +1,5 @@
+from _decimal import Decimal
+
 from user_service.models import User
 from django.db import models
 
@@ -10,6 +12,23 @@ class Borrowing(models.Model):
     actual_return_date = models.DateField(default=None, null=True, blank=True)
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name="borrowings")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="borrowings")
+
+    @property
+    def total_fine_amount(self):
+        if self.actual_return_date:
+            days_late = (self.actual_return_date - self.expected_return_date).days
+            if days_late > 0:
+                return (self.book.daily_fee * days_late) * 2
+        days_late = (self.expected_return_date - self.borrow_date).days
+        if days_late > 0:
+            return self.book.daily_fee * days_late
+        return self.book.daily_fee * 1
+
+    @property
+    def fine_days(self):
+        if self.actual_return_date is not None:
+            return (self.actual_return_date - self.expected_return_date).days
+        return False
 
 
 class Payment(models.Model):

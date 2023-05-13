@@ -1,6 +1,17 @@
 from rest_framework import serializers
 
-from borrowing_service.models import Borrowing
+from borrowing_service.models import Borrowing, Payment
+
+
+class PaymentListSerializer(serializers.ModelSerializer):
+    money_to_pay = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payment
+        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")
+
+    def get_money_to_pay(self, obj):
+        return obj.money_to_pay
 
 
 class BorrowingListSerializer(serializers.ModelSerializer):
@@ -25,6 +36,7 @@ class BorrowingDetailSerializer(serializers.ModelSerializer):
     book_author = serializers.CharField(source="book.author")
     book_cover = serializers.CharField(source="book.cover")
     book_daily_fee = serializers.CharField(source="book.daily_fee")
+    payments = PaymentListSerializer(many=True)
 
     class Meta:
         model = Borrowing
@@ -37,6 +49,7 @@ class BorrowingDetailSerializer(serializers.ModelSerializer):
             "book_author",
             "book_cover",
             "book_daily_fee",
+            "payments",
             "user"
         )
 
@@ -45,6 +58,7 @@ class BorrowingDetailSerializer(serializers.ModelSerializer):
             "book_author",
             "book_cover",
             "book_daily_fee",
+            "payments",
             "user"
         )
 
@@ -53,10 +67,26 @@ class BorrowingCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Borrowing
-        fields = ("book", "expected_return_date", "user")
+        fields = ("id", "book", "expected_return_date", "user")
         read_only_fields = ("user",)
 
     def create(self, validated_data):
         user = self.context["request"].user
         validated_data["user"] = user
         return super().create(validated_data)
+
+
+class BorrowingReturnSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Borrowing
+        fields = ("id",)
+        read_only_fields = ("id",)
+
+
+class PaymentDetailSerializer(serializers.ModelSerializer):
+    borrowing = BorrowingListSerializer()
+
+    class Meta:
+        model = Payment
+        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")
