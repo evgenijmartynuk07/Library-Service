@@ -61,15 +61,26 @@ class BorrowingViewSet(
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
+        borrowing = Borrowing.objects.all()
 
         data = request.data.copy()
         data["user"] = request.user.id
         book = Book.objects.get(id=request.data.get("book"))
         if book.inventory <= 0:
             raise "No book available"
-        borrowing = Borrowing.objects.filter(book=book, user=request.user)
-        if borrowing:
+
+        if borrowing.filter(book=book, user=request.user):
             raise "You borrowed this book"
+
+        if borrowing.filter(payments__status__in=("PENDING",), user=request.user):
+            return Response(
+                data={
+                    'message':
+                        'You are not allowed to borrow new books due to pending payments.'
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         book.inventory -= 1
         book.save()
         serializer = self.get_serializer(data=data)
