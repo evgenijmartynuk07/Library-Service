@@ -8,7 +8,14 @@ class PaymentListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Payment
-        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")
+        fields = (
+            "status",
+            "type",
+            "session_url",
+            "session_id",
+            "money_to_pay",
+            "borrowing",
+        )
 
     def get_money_to_pay(self, obj):
         return obj.money_to_pay
@@ -27,7 +34,7 @@ class BorrowingListSerializer(serializers.ModelSerializer):
             "actual_return_date",
             "book_title",
             "book_author",
-            "user"
+            "user",
         )
 
 
@@ -50,7 +57,7 @@ class BorrowingDetailSerializer(serializers.ModelSerializer):
             "book_cover",
             "book_daily_fee",
             "payments",
-            "user"
+            "user",
         )
 
         read_only_fields = (
@@ -59,12 +66,11 @@ class BorrowingDetailSerializer(serializers.ModelSerializer):
             "book_cover",
             "book_daily_fee",
             "payments",
-            "user"
+            "user",
         )
 
 
 class BorrowingCreateSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Borrowing
         fields = ("id", "book", "expected_return_date", "user")
@@ -77,7 +83,6 @@ class BorrowingCreateSerializer(serializers.ModelSerializer):
 
 
 class BorrowingReturnSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Borrowing
         fields = ("id",)
@@ -89,4 +94,11 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Payment
-        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")
+        fields = (
+            "status",
+            "type",
+            "session_url",
+            "session_id",
+            "money_to_pay",
+            "borrowing",
+        )

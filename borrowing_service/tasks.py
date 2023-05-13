@@ -28,10 +28,13 @@ def setup_periodic_tasks(sender, **kwargs):
 @app.task
 def check_and_send_to_telegram():
     tomorrow = timezone.now() + datetime.timedelta(days=1)
-    borrowings = Borrowing.objects.filter(expected_return_date__lte=tomorrow).all()
+    borrowings = Borrowing.objects.filter(
+        expected_return_date__lte=tomorrow
+    ).all()
 
     async def send_message(text):
         await bot.send_message(chat_id=CHAT_ID, text=text)
+
     message_telegram = []
     if borrowings:
         for borrowing in borrowings:
@@ -43,5 +46,3 @@ def check_and_send_to_telegram():
     else:
         message_telegram = "No borrowings overdue today!"
     asyncio.run(send_message(message_telegram))
-
-

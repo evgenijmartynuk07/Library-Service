@@ -1,31 +1,31 @@
 import asyncio
-import datetime
 import telegram
 import os
 import datetime
-from celery.utils.time import timezone
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
-from django.views import View
-from django.views.decorators.http import require_POST, require_GET
 from dotenv import load_dotenv
 import stripe
-from django.views.decorators.csrf import csrf_exempt
-from flask import Flask, redirect, render_template_string, current_app
+from flask import Flask
 from django.db.models import QuerySet
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 from django.urls import reverse
 from books_service.models import Book
 from borrowing_service.models import Borrowing, Payment
-from borrowing_service.serializers import BorrowingListSerializer, BorrowingDetailSerializer, BorrowingCreateSerializer, \
-    BorrowingReturnSerializer, PaymentListSerializer, PaymentDetailSerializer
+from borrowing_service.serializers import (
+    BorrowingListSerializer,
+    BorrowingDetailSerializer,
+    BorrowingCreateSerializer,
+    BorrowingReturnSerializer,
+    PaymentListSerializer,
+    PaymentDetailSerializer,
+)
 
 load_dotenv()
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -72,11 +72,14 @@ class BorrowingViewSet(
         if borrowing.filter(book=book, user=request.user):
             raise "You borrowed this book"
 
-        if borrowing.filter(payments__status__in=("PENDING",), user=request.user):
+        if borrowing.filter(
+            payments__status__in=("PENDING",), user=request.user
+        ):
             return Response(
                 data={
-                    'message':
-                        'You are not allowed to borrow new books due to pending payments.'
+                    "message":
+                        "You are not allowed to borrow new books "
+                        "due to pending payments."
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
@@ -86,15 +89,17 @@ class BorrowingViewSet(
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
 
         async def send_message(text):
             await bot.send_message(chat_id=CHAT_ID, text=text)
+
         asyncio.run(send_message(serializer.data))
 
         url = reverse("borrowing_service:create-checkout-session")
         borrowing_id = serializer.data["id"]
-        absolute_url = request.build_absolute_uri(f"{url}?borrowing_id={borrowing_id}")
+        absolute_url = request.build_absolute_uri(
+            f"{url}?borrowing_id={borrowing_id}"
+        )
 
         return HttpResponseRedirect(absolute_url)
 
@@ -115,7 +120,9 @@ class BorrowingViewSet(
 
                 if borrowing.fine_days:
                     url = reverse("borrowing_service:create-checkout-session")
-                    absolute_url = request.build_absolute_uri(f"{url}?borrowing_id={borrowing.id}")
+                    absolute_url = request.build_absolute_uri(
+                        f"{url}?borrowing_id={borrowing.id}"
+                    )
                     return HttpResponseRedirect(absolute_url)
 
                 return Response(status=status.HTTP_200_OK)
@@ -189,25 +196,28 @@ class PaymentViewSet(
         with transaction.atomic():
             checkout_session = stripe.checkout.Session.retrieve(session_id)
 
-            payment_id = checkout_session.metadata['payment_id']
+            payment_id = checkout_session.metadata["payment_id"]
             payment = Payment.objects.get(id=payment_id)
 
             payment.session_id = checkout_session.id
             payment.money_to_pay = checkout_session.amount_total / 100
             payment.status = "PAID"
-            payment.type = "PAYMENT"
+            payment.type_session = "PAYMENT"
             payment.money_to_pay = 0
             payment.save()
 
             borrowing = payment.borrowing
             borrowing.save()
 
-            serializer = self.get_serializer(payment, data=request.data, partial=True)
+            serializer = self.get_serializer(
+                payment, data=request.data, partial=True
+            )
             if serializer.is_valid():
                 serializer.save()
 
                 async def send_message(text):
                     await bot.send_message(chat_id=CHAT_ID, text=text)
+
                 asyncio.run(send_message(serializer.data))
 
                 return Response(serializer.data)
@@ -225,10 +235,12 @@ class PaymentViewSet(
             return Response(status=status.HTTP_403_FORBIDDEN)
 
         payment.status = Payment.STATUS_CHOICES[0][0]
-        payment.type = Payment.TYPE_CHOICES[0][0]
+        payment.type_session = Payment.TYPE_CHOICES[0][0]
         payment.save()
 
-        serializer = self.get_serializer(payment, data=request.data, partial=True)
+        serializer = self.get_serializer(
+            payment, data=request.data, partial=True
+        )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -241,7 +253,7 @@ def create_checkout_session(request):
     if not request.user:
         raise "You need login"
 
-    borrowing_id = request.GET.get('borrowing_id')
+    borrowing_id = request.GET.get("borrowing_id")
     borrowing = Borrowing.objects.get(id=borrowing_id)
 
     if Payment.objects.filter(borrowing_id=borrowing_id).exists():
@@ -251,7 +263,7 @@ def create_checkout_session(request):
 
         if payment.status == "PAID" and borrowing.fine_days:
             payment.money_to_pay = borrowing.total_fine_amount
-            payment.type = payment.TYPE_CHOICES[1][0]
+            payment.type_session = payment.TYPE_CHOICES[1][0]
 
         if payment.status == "PAID" and not borrowing.fine_days:
             return Response(status=status.HTTP_303_SEE_OTHER)
@@ -263,23 +275,27 @@ def create_checkout_session(request):
         )
 
     session = stripe.checkout.Session.create(
-        payment_method_types=['card'],
-        line_items=[{
-            'price_data': {
-                'currency': 'usd',
-                'product_data': {
-                    'name': borrowing.book.title,
+        payment_method_types=["card"],
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": borrowing.book.title,
+                    },
+                    "unit_amount": int(payment.money_to_pay * 100),
                 },
-                'unit_amount': int(payment.money_to_pay * 100),
-            },
-            'quantity': 1,
-        }],
-        mode='payment',
-        success_url=request.build_absolute_uri(reverse("borrowing_service:payment-success", args=[payment.id])),
-        cancel_url=request.build_absolute_uri(reverse('borrowing_service:cancel-payment', args=[payment.id])),
-        metadata={
-            'payment_id': payment.id
-        }
+                "quantity": 1,
+            }
+        ],
+        mode="payment",
+        success_url=request.build_absolute_uri(
+            reverse("borrowing_service:payment-success", args=[payment.id])
+        ),
+        cancel_url=request.build_absolute_uri(
+            reverse("borrowing_service:cancel-payment", args=[payment.id])
+        ),
+        metadata={"payment_id": payment.id},
     )
 
     payment.session_id = session.id
