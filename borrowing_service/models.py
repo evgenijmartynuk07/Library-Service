@@ -16,7 +16,7 @@ class Borrowing(models.Model):
     @property
     def total_fine_amount(self):
         if self.actual_return_date:
-            days_late = (self.actual_return_date - self.borrow_date).days
+            days_late = (self.actual_return_date - self.expected_return_date).days
             if days_late > 0:
                 return self.book.daily_fee * days_late
         days_late = (self.expected_return_date - self.borrow_date).days

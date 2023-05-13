@@ -81,9 +81,11 @@ class BorrowingViewSet(
             await bot.send_message(chat_id=CHAT_ID, text=text)
         asyncio.run(send_message(serializer.data))
 
-        return HttpResponseRedirect(
-            f"http://localhost:8000/api/payments/create-checkout-session/?borrowing_id={serializer.data['id']}"
-            )
+        url = reverse("borrowing_service:create-checkout-session")
+        borrowing_id = serializer.data["id"]
+        absolute_url = request.build_absolute_uri(f"{url}?borrowing_id={borrowing_id}")
+
+        return HttpResponseRedirect(absolute_url)
 
     @action(
         methods=["POST"],
@@ -99,6 +101,7 @@ class BorrowingViewSet(
                 book.save()
                 borrowing.actual_return_date = datetime.date.today()
                 borrowing.save()
+
                 return Response(status=status.HTTP_200_OK)
             return Response(status=status.HTTP_403_FORBIDDEN)
 
@@ -149,6 +152,8 @@ class PaymentViewSet(
     def get_serializer_class(self):
         if self.action == "retrieve":
             return PaymentDetailSerializer
+        if self.action in ("payment_success", "cancel_payment"):
+            return PaymentDetailSerializer
         return PaymentListSerializer
 
     def get_queryset(self):
@@ -156,6 +161,61 @@ class PaymentViewSet(
         if self.request.user.is_staff:
             return queryset
         return queryset.filter(borrowing__user=self.request.user)
+
+    @action(
+        methods=["GET"],
+        detail=True,
+        url_path="success",
+    )
+    def payment_success(self, request, pk):
+        session_id = self.get_object().session_id
+
+        with transaction.atomic():
+            checkout_session = stripe.checkout.Session.retrieve(session_id)
+
+            payment_id = checkout_session.metadata['payment_id']
+            payment = Payment.objects.get(id=payment_id)
+
+            payment.session_id = checkout_session.id
+            payment.money_to_pay = checkout_session.amount_total / 100
+            payment.status = "PAID"
+            payment.type = "FINE"
+            payment.save()
+
+            borrowing = payment.borrowing
+            borrowing.save()
+
+            serializer = self.get_serializer(payment, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+
+                async def send_message(text):
+                    await bot.send_message(chat_id=CHAT_ID, text=text)
+                asyncio.run(send_message(serializer.data))
+
+                return Response(serializer.data)
+            return Response(serializer.errors)
+
+    @action(
+        methods=["GET"],
+        detail=True,
+        url_path="cancel",
+    )
+    def cancel_payment(self, request, pk):
+        payment = get_object_or_404(Payment, id=pk)
+
+        if payment.status == "PAID":
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        payment.status = Payment.STATUS_CHOICES[0][0]
+        payment.type = Payment.TYPE_CHOICES[0][0]
+        payment.save()
+
+        serializer = self.get_serializer(payment, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors)
 
 
 @transaction.atomic
@@ -186,7 +246,7 @@ def create_checkout_session(request):
             'quantity': 1,
         }],
         mode='payment',
-        success_url=f'http://localhost:8000/api/payments/success/?session_id=' + '{CHECKOUT_SESSION_ID}',
+        success_url=request.build_absolute_uri(reverse("borrowing_service:payment-success", args=[payment.id])),
         cancel_url=request.build_absolute_uri(reverse('borrowing_service:cancel-payment', args=[payment.id])),
         metadata={
             'payment_id': payment.id
@@ -198,48 +258,3 @@ def create_checkout_session(request):
     payment.save()
 
     return HttpResponseRedirect(session.url)
-
-
-@csrf_exempt
-def payment_success(request):
-    session_id = request.GET.get('session_id')
-
-    with transaction.atomic():
-        checkout_session = stripe.checkout.Session.retrieve(session_id)
-
-        payment_id = checkout_session.metadata['payment_id']
-        payment = Payment.objects.get(id=payment_id)
-
-        payment.session_id = checkout_session.id
-        payment.money_to_pay = checkout_session.amount_total / 100
-        payment.status = "PAID"
-        payment.type = "FINE"
-        payment.save()
-
-        borrowing = payment.borrowing
-        borrowing.save()
-
-        with app.app_context():
-            html = render_template_string(
-                f'<html><body><h1>Thanks for your pay!</h1></body></html>',
-            )
-            return HttpResponse(html)
-
-
-@csrf_exempt
-@require_GET
-def cancel_payment(request, payment_id):
-    payment = get_object_or_404(Payment, id=payment_id)
-
-    if payment.status == "PAID":
-        return Response(status=status.HTTP_403_FORBIDDEN)
-
-    payment.status = Payment.STATUS_CHOICES[0][0] # Assuming PENDING is the first choice in STATUS_CHOICES
-    payment.type = Payment.TYPE_CHOICES[0][0]
-    payment.save()
-
-    with app.app_context():
-        html = render_template_string(
-            f'<html><body><h1>payment can be paid a bit later (but the session is available for only 24h)!</h1></body></html>',
-        )
-    return HttpResponse(html)

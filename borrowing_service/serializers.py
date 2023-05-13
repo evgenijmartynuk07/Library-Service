@@ -14,13 +14,6 @@ class PaymentListSerializer(serializers.ModelSerializer):
         return obj.money_to_pay
 
 
-class PaymentDetailSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Payment
-        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")
-
-
 class BorrowingListSerializer(serializers.ModelSerializer):
     book_title = serializers.CharField(source="book.title", read_only=True)
     book_author = serializers.CharField(source="book.author", read_only=True)
@@ -91,3 +84,9 @@ class BorrowingReturnSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
+class PaymentDetailSerializer(serializers.ModelSerializer):
+    borrowing = BorrowingListSerializer()
+
+    class Meta:
+        model = Payment
+        fields = ("status", "type", "session_url", "session_id", "money_to_pay", "borrowing")
