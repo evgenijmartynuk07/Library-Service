@@ -18,11 +18,17 @@ class Borrowing(models.Model):
         if self.actual_return_date:
             days_late = (self.actual_return_date - self.expected_return_date).days
             if days_late > 0:
-                return self.book.daily_fee * days_late
+                return (self.book.daily_fee * days_late) * 2
         days_late = (self.expected_return_date - self.borrow_date).days
         if days_late > 0:
             return self.book.daily_fee * days_late
         return self.book.daily_fee * 1
+
+    @property
+    def fine_days(self):
+        if self.actual_return_date is not None:
+            return (self.actual_return_date - self.expected_return_date).days
+        return False
 
 
 class Payment(models.Model):

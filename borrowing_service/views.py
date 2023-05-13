@@ -102,6 +102,11 @@ class BorrowingViewSet(
                 borrowing.actual_return_date = datetime.date.today()
                 borrowing.save()
 
+                if borrowing.fine_days:
+                    url = reverse("borrowing_service:create-checkout-session")
+                    absolute_url = request.build_absolute_uri(f"{url}?borrowing_id={borrowing.id}")
+                    return HttpResponseRedirect(absolute_url)
+
                 return Response(status=status.HTTP_200_OK)
             return Response(status=status.HTTP_403_FORBIDDEN)
 
@@ -179,7 +184,8 @@ class PaymentViewSet(
             payment.session_id = checkout_session.id
             payment.money_to_pay = checkout_session.amount_total / 100
             payment.status = "PAID"
-            payment.type = "FINE"
+            payment.type = "PAYMENT"
+            payment.money_to_pay = 0
             payment.save()
 
             borrowing = payment.borrowing
@@ -226,13 +232,25 @@ def create_checkout_session(request):
 
     borrowing_id = request.GET.get('borrowing_id')
     borrowing = Borrowing.objects.get(id=borrowing_id)
-    payment = Payment.objects.create(
-        borrowing=borrowing,
-        money_to_pay=borrowing.total_fine_amount,
-        type="PAYMENT",
-    )
+
     if Payment.objects.filter(borrowing_id=borrowing_id).exists():
         payment = Payment.objects.get(borrowing_id=borrowing_id)
+        if payment.status == "PENDING" and borrowing.fine_days:
+            payment.money_to_pay += borrowing.total_fine_amount
+
+        if payment.status == "PAID" and borrowing.fine_days:
+            payment.money_to_pay = borrowing.total_fine_amount
+            payment.type = payment.TYPE_CHOICES[1][0]
+
+        if payment.status == "PAID" and not borrowing.fine_days:
+            return Response(status=status.HTTP_303_SEE_OTHER)
+    else:
+        payment = Payment.objects.create(
+            borrowing=borrowing,
+            money_to_pay=borrowing.total_fine_amount,
+            type="PAYMENT",
+        )
+
     session = stripe.checkout.Session.create(
         payment_method_types=['card'],
         line_items=[{
