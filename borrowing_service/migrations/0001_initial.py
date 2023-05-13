@@ -80,8 +80,14 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("session_url", models.URLField(blank=True, null=True)),
-                ("session_id", models.CharField(blank=True, max_length=255, null=True)),
-                ("money_to_pay", models.DecimalField(decimal_places=2, max_digits=8)),
+                (
+                    "session_id",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                (
+                    "money_to_pay",
+                    models.DecimalField(decimal_places=2, max_digits=8),
+                ),
                 (
                     "borrowing",
                     models.ForeignKey(
