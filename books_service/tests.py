@@ -10,7 +10,7 @@ from books_service.models import Book
 BOOK_URL = reverse("books_service:book-list")
 
 
-def sample_movie(**params):
+def sample_book(**params):
     defaults = {
         "title": "Sample movie",
         "author": "Sample description",

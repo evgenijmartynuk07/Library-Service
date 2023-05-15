@@ -37,7 +37,7 @@ urlpatterns = [
         name="payments-detail",
     ),
     path(
-        "payments/create-checkout-session/",
+        "payments/create-checkout-session/<int:borrowing_id>/",
         create_checkout_session,
         name="create-checkout-session",
     ),

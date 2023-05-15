@@ -2,6 +2,7 @@ import asyncio
 import telegram
 import os
 import datetime
+
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from dotenv import load_dotenv
@@ -16,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 from django.urls import reverse
+
 from books_service.models import Book
 from borrowing_service.models import Borrowing, Payment
 from borrowing_service.serializers import (
@@ -67,21 +69,17 @@ class BorrowingViewSet(
         data["user"] = request.user.id
         book = Book.objects.get(id=request.data.get("book"))
         if book.inventory <= 0:
-            raise "No book available"
+            raise Exception("No book available")
 
         if borrowing.filter(book=book, user=request.user):
-            raise "You borrowed this book"
+            raise Exception("You borrowed this book")
 
         if borrowing.filter(
             payments__status__in=("PENDING",), user=request.user
         ):
-            return Response(
-                data={
-                    "message":
-                        "You are not allowed to borrow new books "
-                        "due to pending payments."
-                },
-                status=status.HTTP_403_FORBIDDEN,
+            raise Exception(
+                "You are not allowed to borrow "
+                "new books due to pending payments."
             )
 
         book.inventory -= 1
@@ -91,17 +89,19 @@ class BorrowingViewSet(
         self.perform_create(serializer)
 
         async def send_message(text):
-            await bot.send_message(chat_id=CHAT_ID, text=text)
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                text=f"Borrowing created with ID {serializer.data['id']}",
+            )
 
         asyncio.run(send_message(serializer.data))
 
-        url = reverse("borrowing_service:create-checkout-session")
         borrowing_id = serializer.data["id"]
-        absolute_url = request.build_absolute_uri(
-            f"{url}?borrowing_id={borrowing_id}"
+        url = reverse(
+            "borrowing_service:create-checkout-session", args=[borrowing_id]
         )
 
-        return HttpResponseRedirect(absolute_url)
+        return HttpResponseRedirect(url)
 
     @action(
         methods=["POST"],
@@ -119,11 +119,11 @@ class BorrowingViewSet(
                 borrowing.save()
 
                 if borrowing.fine_days:
-                    url = reverse("borrowing_service:create-checkout-session")
-                    absolute_url = request.build_absolute_uri(
-                        f"{url}?borrowing_id={borrowing.id}"
+                    url = reverse(
+                        "borrowing_service:create-checkout-session",
+                        args=[borrowing.id],
                     )
-                    return HttpResponseRedirect(absolute_url)
+                    return HttpResponseRedirect(url)
 
                 return Response(status=status.HTTP_200_OK)
             return Response(status=status.HTTP_403_FORBIDDEN)
@@ -248,12 +248,10 @@ class PaymentViewSet(
 
 
 @transaction.atomic
-@app.route("/create-checkout-session/?borrowing_id=<int:pk>", methods=["GET"])
-def create_checkout_session(request):
+def create_checkout_session(request, borrowing_id):
     if not request.user:
-        raise "You need login"
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
 
-    borrowing_id = request.GET.get("borrowing_id")
     borrowing = Borrowing.objects.get(id=borrowing_id)
 
     if Payment.objects.filter(borrowing_id=borrowing_id).exists():
@@ -271,7 +269,7 @@ def create_checkout_session(request):
         payment = Payment.objects.create(
             borrowing=borrowing,
             money_to_pay=borrowing.total_fine_amount,
-            type="PAYMENT",
+            type_session="PAYMENT",
         )
 
     session = stripe.checkout.Session.create(

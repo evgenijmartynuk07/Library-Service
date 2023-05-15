@@ -60,6 +60,8 @@ class Payment(models.Model):
     money_to_pay = models.DecimalField(max_digits=8, decimal_places=2)
 
     def __str__(self) -> str:
-        return f"{self.get_status_display()}, " \
-               f"{self.get_type_session_display()} - " \
-               f"{self.borrowing}"
+        return (
+            f"{self.get_status_display()}, "
+            f"{self.get_type_session_display()} - "
+            f"{self.borrowing}"
+        )

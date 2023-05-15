@@ -10,7 +10,7 @@ class PaymentListSerializer(serializers.ModelSerializer):
         model = Payment
         fields = (
             "status",
-            "type",
+            "type_session",
             "session_url",
             "session_id",
             "money_to_pay",
@@ -96,7 +96,7 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
         model = Payment
         fields = (
             "status",
-            "type",
+            "type_session",
             "session_url",
             "session_id",
             "money_to_pay",
