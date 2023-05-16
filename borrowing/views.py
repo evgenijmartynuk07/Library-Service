@@ -6,7 +6,6 @@ import datetime
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 import stripe
-from flask import Flask
 from django.db.models import QuerySet
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -31,8 +30,6 @@ from borrowing.serializers import (
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 bot = telegram.Bot(token=BOT_TOKEN)
-
-app = Flask(__name__)
 stripe.api_key = os.environ.get("STRIPE_KEY")
 
 
