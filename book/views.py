@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAdminUser
-from books_service.models import Book
-from books_service.serializers import (
+from book.models import Book
+from book.serializers import (
     BookListCreateSerializer,
     BookDetailSerializer,
 )

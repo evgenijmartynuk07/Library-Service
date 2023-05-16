@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("borrowing_service", "0001_initial"),
+        ("borrowing", "0001_initial"),
     ]
 
     operations = [

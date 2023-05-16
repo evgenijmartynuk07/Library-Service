@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class BorrowingServiceConfig(AppConfig):
+class BooksServiceConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "borrowing_service"
+    name = "book"

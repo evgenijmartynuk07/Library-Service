@@ -5,9 +5,9 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 
-from books_service.models import Book
+from book.models import Book
 
-BOOK_URL = reverse("books_service:book-list")
+BOOK_URL = reverse("book:book-list")
 
 
 def sample_book(**params):
@@ -24,7 +24,7 @@ def sample_book(**params):
 
 
 def detail_url(book_id):
-    return reverse("books_service:book-detail", args=[book_id])
+    return reverse("book:book-detail", args=[book_id])
 
 
 class GetCreateBookApiTests(TestCase):

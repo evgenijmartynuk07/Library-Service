@@ -1,7 +1,7 @@
-from user_service.models import User
+from user.models import User
 from django.db import models
 
-from books_service.models import Book
+from book.models import Book
 
 
 class Borrowing(models.Model):

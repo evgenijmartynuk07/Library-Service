@@ -1,6 +1,6 @@
 from rest_framework import routers
 from django.urls import path
-from borrowing_service.views import (
+from borrowing.views import (
     BorrowingViewSet,
     PaymentViewSet,
     create_checkout_session,
@@ -53,4 +53,4 @@ urlpatterns = [
     ),
 ]
 
-app_name = "borrowing_service"
+app_name = "borrowing"

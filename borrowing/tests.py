@@ -11,8 +11,8 @@ from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
-from books_service.models import Book
-from borrowing_service.models import Borrowing, Payment
+from book.models import Book
+from borrowing.models import Borrowing, Payment
 
 load_dotenv()
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -66,7 +66,7 @@ class BorrowingModelTestCase(TestCase):
             timezone.now().date() + timedelta(days=14),
         )
 
-    @patch("borrowing_service.views.telegram.Bot.send_message")
+    @patch("borrowing.views.telegram.Bot.send_message")
     def test_create_borrowing_sends_telegram_message(self, mock_send_message):
         book = sample_book()
 

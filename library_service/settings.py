@@ -42,9 +42,9 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "rest_framework_simplejwt",
-    "books_service",
-    "borrowing_service",
-    "user_service",
+    "book",
+    "borrowing",
+    "user",
     "payment",
 ]
 
@@ -89,7 +89,7 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = "user_service.User"
+AUTH_USER_MODEL = "user.User"
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 

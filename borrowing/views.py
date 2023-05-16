@@ -18,9 +18,9 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.urls import reverse
 
-from books_service.models import Book
-from borrowing_service.models import Borrowing, Payment
-from borrowing_service.serializers import (
+from book.models import Book
+from borrowing.models import Borrowing, Payment
+from borrowing.serializers import (
     BorrowingListSerializer,
     BorrowingDetailSerializer,
     BorrowingCreateSerializer,

@@ -6,8 +6,8 @@ from celery.schedules import crontab
 import asyncio
 import os
 
-from borrowing_service.models import Borrowing
-from borrowing_service.serializers import BorrowingDetailSerializer
+from borrowing.models import Borrowing
+from borrowing.serializers import BorrowingDetailSerializer
 from library_service.celery import app
 
 

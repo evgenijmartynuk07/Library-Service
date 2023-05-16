@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ("books_service", "0001_initial"),
+        ("book", "0001_initial"),
     ]
 
     operations = [
@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="borrowings",
-                        to="books_service.book",
+                        to="book.book",
                     ),
                 ),
                 (
@@ -93,7 +93,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="payments",
-                        to="borrowing_service.borrowing",
+                        to="borrowing.borrowing",
                     ),
                 ),
             ],
