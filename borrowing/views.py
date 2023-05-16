@@ -5,7 +5,6 @@ import datetime
 
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from dotenv import load_dotenv
 import stripe
 from flask import Flask
 from django.db.models import QuerySet
@@ -29,7 +28,6 @@ from borrowing.serializers import (
     PaymentDetailSerializer,
 )
 
-load_dotenv()
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 bot = telegram.Bot(token=BOT_TOKEN)
