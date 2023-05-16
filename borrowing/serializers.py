@@ -86,7 +86,6 @@ class BorrowingReturnSerializer(serializers.ModelSerializer):
     class Meta:
         model = Borrowing
         fields = ("id",)
-        read_only_fields = ("id",)
 
 
 class PaymentDetailSerializer(serializers.ModelSerializer):

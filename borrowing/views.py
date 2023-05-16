@@ -93,7 +93,7 @@ class BorrowingViewSet(
 
         borrowing_id = serializer.data["id"]
         url = reverse(
-            "borrowing_service:create-checkout-session", args=[borrowing_id]
+            "borrowing:create-checkout-session", args=[borrowing_id]
         )
 
         return HttpResponseRedirect(url)
@@ -112,15 +112,17 @@ class BorrowingViewSet(
                 book.save()
                 borrowing.actual_return_date = datetime.date.today()
                 borrowing.save()
+                serializer = self.get_serializer(data=request.data)
+                if serializer.is_valid(raise_exception=True):
 
-                if borrowing.fine_days:
-                    url = reverse(
-                        "borrowing_service:create-checkout-session",
-                        args=[borrowing.id],
-                    )
-                    return HttpResponseRedirect(url)
+                    if borrowing.fine_days:
+                        url = reverse(
+                            "borrowing:create-checkout-session",
+                            args=[borrowing.id],
+                        )
+                        return HttpResponseRedirect(url)
 
-                return Response(status=status.HTTP_200_OK)
+                return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(status=status.HTTP_403_FORBIDDEN)
 
     @extend_schema(
@@ -283,10 +285,10 @@ def create_checkout_session(request, borrowing_id):
         ],
         mode="payment",
         success_url=request.build_absolute_uri(
-            reverse("borrowing_service:payment-success", args=[payment.id])
+            reverse("borrowing:payment-success", args=[payment.id])
         ),
         cancel_url=request.build_absolute_uri(
-            reverse("borrowing_service:cancel-payment", args=[payment.id])
+            reverse("borrowing:cancel-payment", args=[payment.id])
         ),
         metadata={"payment_id": payment.id},
     )
